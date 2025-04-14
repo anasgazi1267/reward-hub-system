@@ -277,10 +277,10 @@ function renderWithdrawals(withdrawals: WithdrawalRequest[]) {
               <Coins size={16} className="text-gold-500" />
               <span>{withdrawal.coinAmount}</span>
             </div>
-            {withdrawal.additionalInfo?.playerUsername && (
+            {withdrawal.playerUsername && (
               <div className="text-xs text-muted-foreground">
-                Player: {withdrawal.additionalInfo.playerUsername}
-                {withdrawal.additionalInfo.playerId && ` (${withdrawal.additionalInfo.playerId})`}
+                Player: {withdrawal.playerUsername}
+                {withdrawal.playerID && ` (${withdrawal.playerID})`}
               </div>
             )}
           </div>
