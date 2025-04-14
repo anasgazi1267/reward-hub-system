@@ -68,12 +68,11 @@ export interface WithdrawalRequest {
   coinAmount: number;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
-  additionalInfo?: {
-    playerUsername?: string;
-    playerId?: string;
-    email?: string;
-    phone?: string;
-  };
+  playerUsername?: string;
+  playerID?: string;
+  email?: string;
+  phoneNumber?: string;
+  category: RewardCategory;
 }
 
 // Settings Type

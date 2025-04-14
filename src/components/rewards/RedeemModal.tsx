@@ -19,7 +19,7 @@ import { toast } from '@/components/ui/sonner';
 import { DollarSign } from 'lucide-react';
 
 interface RedeemModalProps {
-  reward: Reward;
+  reward: Reward | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -34,10 +34,10 @@ const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  if (!user) return null;
+  if (!user || !reward) return null;
   
-  const needsGameInfo = reward.category === 'gaming';
-  const { title, coinCost, category } = reward;
+  const needsGameInfo = ['FreeFire', 'PUBG'].includes(reward.category);
+  const { name, coinCost, category } = reward;
   
   const handleSubmit = () => {
     setIsSubmitting(true);
@@ -79,8 +79,9 @@ const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
     
     // Prepare the withdrawal request
     const withdrawalRequest = {
+      userId: user.id,
       rewardId: reward.id,
-      rewardName: title,
+      rewardName: name,
       coinAmount: coinCost,
       playerUsername: needsGameInfo ? playerUsername : '',
       playerID: needsGameInfo ? playerID : '',
@@ -94,7 +95,7 @@ const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
     if (coinsDeducted) {
       const success = requestWithdrawal(withdrawalRequest);
       if (success) {
-        toast.success(`Withdrawal request for ${title} submitted!`);
+        toast.success(`Withdrawal request for ${name} submitted!`);
         onClose();
       } else {
         // If withdrawal failed but coins were deducted, we should refund
@@ -110,7 +111,7 @@ const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Redeem {title}</DialogTitle>
+          <DialogTitle>Redeem {name}</DialogTitle>
           <DialogDescription>
             Complete the form to redeem this reward.
           </DialogDescription>

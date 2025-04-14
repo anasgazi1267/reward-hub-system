@@ -3,7 +3,7 @@ import {
   Task, 
   Reward, 
   WithdrawalRequest,
-  SettingsType,
+  SystemSettings,
   PopupAd,
   BannerAd
 } from '@/lib/types';
@@ -14,19 +14,20 @@ type DataContextType = {
   tasks: Task[];
   rewards: Reward[];
   withdrawalRequests: WithdrawalRequest[];
-  settings: SettingsType;
+  settings: SystemSettings;
   popupAds: PopupAd[];
   bannerAds: BannerAd[];
   requestWithdrawal: (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt' | 'username'>) => boolean;
   approveWithdrawal: (requestId: string) => void;
   rejectWithdrawal: (requestId: string) => void;
+  updateWithdrawalStatus: (requestId: string, status: 'pending' | 'approved' | 'rejected') => void;
   addTask: (task: Omit<Task, 'id'>) => void;
   updateTask: (taskId: string, task: Partial<Task>) => void;
   deleteTask: (taskId: string) => void;
   addReward: (reward: Omit<Reward, 'id'>) => void;
   updateReward: (rewardId: string, reward: Partial<Reward>) => void;
   deleteReward: (rewardId: string) => void;
-  updateSettings: (newSettings: Partial<SettingsType>) => void;
+  updateSettings: (newSettings: Partial<SystemSettings>) => void;
   addPopupAd: (ad: Omit<PopupAd, 'id'>) => void;
   updatePopupAd: (adId: string, ad: Partial<PopupAd>) => void;
   deletePopupAd: (adId: string) => void;
@@ -160,7 +161,7 @@ const initialBannerAds: BannerAd[] = [
 
 const initialWithdrawalRequests: WithdrawalRequest[] = [];
 
-const initialSettings: SettingsType = {
+const initialSettings: SystemSettings = {
   minWithdrawalCoins: 500,
   referralReward: 50,
   minReferralsForWithdrawal: 5
@@ -174,7 +175,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [rewards, setRewards] = useState<Reward[]>(initialRewards);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
-  const [settings, setSettings] = useState<SettingsType>(initialSettings);
+  const [settings, setSettings] = useState<SystemSettings>(initialSettings);
   const [popupAds, setPopupAds] = useState<PopupAd[]>(initialPopupAds);
   const [bannerAds, setBannerAds] = useState<BannerAd[]>(initialBannerAds);
 
@@ -269,19 +270,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const approveWithdrawal = (requestId: string) => {
-    const updatedRequests = withdrawalRequests.map(req => 
-      req.id === requestId ? { ...req, status: 'approved' } : req
-    );
-    setWithdrawalRequests(updatedRequests);
-    toast.success(`Withdrawal request approved`);
+    updateWithdrawalStatus(requestId, 'approved');
   };
   
   const rejectWithdrawal = (requestId: string) => {
+    updateWithdrawalStatus(requestId, 'rejected');
+  };
+  
+  const updateWithdrawalStatus = (requestId: string, status: 'pending' | 'approved' | 'rejected') => {
     const updatedRequests = withdrawalRequests.map(req => 
-      req.id === requestId ? { ...req, status: 'rejected' } : req
+      req.id === requestId ? { ...req, status } : req
     );
     setWithdrawalRequests(updatedRequests);
-    toast.success(`Withdrawal request rejected`);
+    toast.success(`Withdrawal request ${status}`);
   };
   
   const addTask = (task: Omit<Task, 'id'>) => {
@@ -330,7 +331,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     toast.success(`Reward deleted successfully`);
   };
   
-  const updateSettings = (newSettings: Partial<SettingsType>) => {
+  const updateSettings = (newSettings: Partial<SystemSettings>) => {
     setSettings({ ...settings, ...newSettings });
     toast.success(`Settings updated successfully`);
   };
@@ -391,6 +392,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     requestWithdrawal,
     approveWithdrawal,
     rejectWithdrawal,
+    updateWithdrawalStatus,
     addTask,
     updateTask,
     deleteTask,

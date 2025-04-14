@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import MainLayout from '@/components/layout/MainLayout';
@@ -34,7 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useEffect } from 'react';
 
 const AdminWithdrawalsPage = () => {
   const { user } = useAuth();
@@ -172,21 +171,17 @@ const AdminWithdrawalsPage = () => {
                     {getBadgeForStatus(withdrawal.status)}
                   </TableCell>
                   <TableCell>
-                    {withdrawal.additionalInfo ? (
-                      <div className="text-xs">
-                        {withdrawal.additionalInfo.playerUsername && (
-                          <div>Player: {withdrawal.additionalInfo.playerUsername}</div>
-                        )}
-                        {withdrawal.additionalInfo.playerId && (
-                          <div>ID: {withdrawal.additionalInfo.playerId}</div>
-                        )}
-                        {withdrawal.additionalInfo.email && (
-                          <div>Email: {withdrawal.additionalInfo.email}</div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">None</span>
-                    )}
+                    <div className="text-xs">
+                      {withdrawal.playerUsername && (
+                        <div>Player: {withdrawal.playerUsername}</div>
+                      )}
+                      {withdrawal.playerID && (
+                        <div>ID: {withdrawal.playerID}</div>
+                      )}
+                      {withdrawal.email && (
+                        <div>Email: {withdrawal.email}</div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     {withdrawal.status === 'pending' ? (
