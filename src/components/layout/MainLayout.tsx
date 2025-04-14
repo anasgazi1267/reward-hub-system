@@ -14,7 +14,8 @@ import {
   FileText,
   LayoutDashboard,
   Menu,
-  X
+  X,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Logo from '@/components/Logo';
@@ -39,6 +40,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     { name: 'Earn Coins', path: '/earn', icon: Award },
     { name: 'Rewards', path: '/rewards', icon: Gift },
     { name: 'Tasks', path: '/tasks', icon: FileCheck },
+    { name: 'Invite', path: '/invite', icon: UserPlus }, // Added invite menu item
     { name: 'Withdraw', path: '/withdraw', icon: DollarSign },
     { name: 'Profile', path: '/profile', icon: User },
   ];
@@ -53,6 +55,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     { name: 'Settings', path: '/admin/settings', icon: SettingsIcon },
   ];
   
+  // Show admin menu items only if user is an admin
   const menuItems = user?.isAdmin ? adminMenuItems : userMenuItems;
   
   const handleLogout = () => {

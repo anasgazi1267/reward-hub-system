@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from '@/context/AuthContext';
-import { DataProvider } from '@/context/DataContext';
+import { DataProvider } from '@/context/DataProvider';
 
 // Public Pages
 import LoginPage from "./pages/LoginPage";
@@ -19,6 +19,7 @@ import RewardsPage from "./pages/RewardsPage";
 import TasksPage from "./pages/TasksPage";
 import WithdrawPage from "./pages/WithdrawPage";
 import ProfilePage from "./pages/ProfilePage";
+import InvitePage from "./pages/InvitePage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/tasks" element={<TasksPage />} />
               <Route path="/withdraw" element={<WithdrawPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/invite" element={<InvitePage />} />
               
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
