@@ -61,6 +61,25 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				gold: {
+					DEFAULT: '#FFD700',
+					50: '#FFFDF0',
+					100: '#FFFAE0',
+					200: '#FFF5C2',
+					300: '#FFEF99',
+					400: '#FFE54D',
+					500: '#FFD700',
+					600: '#D1B000',
+					700: '#A38800',
+					800: '#755F00',
+					900: '#473700',
+					950: '#2E2400'
+				},
+				coin: {
+					DEFAULT: '#FFBB00',
+					light: '#FFDD54',
+					dark: '#D49900'
 				}
 			},
 			borderRadius: {
