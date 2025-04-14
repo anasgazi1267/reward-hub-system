@@ -2,10 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Task, 
   Reward, 
-  PopupAd, 
-  BannerAd, 
   WithdrawalRequest,
-  SystemSettings
+  SettingsType,
+  PopupAd,
+  BannerAd
 } from '@/lib/types';
 import { useAuth } from './AuthContext';
 import { toast } from '@/components/ui/sonner';
@@ -13,25 +13,26 @@ import { toast } from '@/components/ui/sonner';
 type DataContextType = {
   tasks: Task[];
   rewards: Reward[];
+  withdrawalRequests: WithdrawalRequest[];
+  settings: SettingsType;
   popupAds: PopupAd[];
   bannerAds: BannerAd[];
-  withdrawalRequests: WithdrawalRequest[];
-  settings: SystemSettings;
+  requestWithdrawal: (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt' | 'username'>) => boolean;
+  approveWithdrawal: (requestId: string) => void;
+  rejectWithdrawal: (requestId: string) => void;
   addTask: (task: Omit<Task, 'id'>) => void;
-  updateTask: (id: string, task: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
+  updateTask: (taskId: string, task: Partial<Task>) => void;
+  deleteTask: (taskId: string) => void;
   addReward: (reward: Omit<Reward, 'id'>) => void;
-  updateReward: (id: string, reward: Partial<Reward>) => void;
-  deleteReward: (id: string) => void;
+  updateReward: (rewardId: string, reward: Partial<Reward>) => void;
+  deleteReward: (rewardId: string) => void;
+  updateSettings: (newSettings: Partial<SettingsType>) => void;
   addPopupAd: (ad: Omit<PopupAd, 'id'>) => void;
-  updatePopupAd: (id: string, ad: Partial<PopupAd>) => void;
-  deletePopupAd: (id: string) => void;
+  updatePopupAd: (adId: string, ad: Partial<PopupAd>) => void;
+  deletePopupAd: (adId: string) => void;
   addBannerAd: (ad: Omit<BannerAd, 'id'>) => void;
-  updateBannerAd: (id: string, ad: Partial<BannerAd>) => void;
-  deleteBannerAd: (id: string) => void;
-  requestWithdrawal: (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt'>) => boolean;
-  updateWithdrawalStatus: (id: string, status: 'approved' | 'rejected') => void;
-  updateSettings: (newSettings: Partial<SystemSettings>) => void;
+  updateBannerAd: (adId: string, ad: Partial<BannerAd>) => void;
+  deleteBannerAd: (adId: string) => void;
 };
 
 const initialTasks: Task[] = [
@@ -159,7 +160,7 @@ const initialBannerAds: BannerAd[] = [
 
 const initialWithdrawalRequests: WithdrawalRequest[] = [];
 
-const initialSettings: SystemSettings = {
+const initialSettings: SettingsType = {
   minWithdrawalCoins: 500,
   referralReward: 50,
   minReferralsForWithdrawal: 5
@@ -172,29 +173,51 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [rewards, setRewards] = useState<Reward[]>(initialRewards);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
+  const [settings, setSettings] = useState<SettingsType>(initialSettings);
   const [popupAds, setPopupAds] = useState<PopupAd[]>(initialPopupAds);
   const [bannerAds, setBannerAds] = useState<BannerAd[]>(initialBannerAds);
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>(initialWithdrawalRequests);
-  const [settings, setSettings] = useState<SystemSettings>(initialSettings);
 
   useEffect(() => {
     const storedTasks = localStorage.getItem('rewardHubTasks');
-    if (storedTasks) setTasks(JSON.parse(storedTasks));
+    if (storedTasks) {
+      setTasks(JSON.parse(storedTasks));
+    } else {
+      localStorage.setItem('rewardHubTasks', JSON.stringify(tasks));
+    }
     
     const storedRewards = localStorage.getItem('rewardHubRewards');
-    if (storedRewards) setRewards(JSON.parse(storedRewards));
-    
-    const storedPopupAds = localStorage.getItem('rewardHubPopupAds');
-    if (storedPopupAds) setPopupAds(JSON.parse(storedPopupAds));
-    
-    const storedBannerAds = localStorage.getItem('rewardHubBannerAds');
-    if (storedBannerAds) setBannerAds(JSON.parse(storedBannerAds));
+    if (storedRewards) {
+      setRewards(JSON.parse(storedRewards));
+    } else {
+      localStorage.setItem('rewardHubRewards', JSON.stringify(rewards));
+    }
     
     const storedWithdrawalRequests = localStorage.getItem('rewardHubWithdrawalRequests');
-    if (storedWithdrawalRequests) setWithdrawalRequests(JSON.parse(storedWithdrawalRequests));
+    if (storedWithdrawalRequests) {
+      setWithdrawalRequests(JSON.parse(storedWithdrawalRequests));
+    }
     
     const storedSettings = localStorage.getItem('rewardHubSettings');
-    if (storedSettings) setSettings(JSON.parse(storedSettings));
+    if (storedSettings) {
+      setSettings(JSON.parse(storedSettings));
+    } else {
+      localStorage.setItem('rewardHubSettings', JSON.stringify(settings));
+    }
+    
+    const storedPopupAds = localStorage.getItem('rewardHubPopupAds');
+    if (storedPopupAds) {
+      setPopupAds(JSON.parse(storedPopupAds));
+    } else {
+      localStorage.setItem('rewardHubPopupAds', JSON.stringify(popupAds));
+    }
+    
+    const storedBannerAds = localStorage.getItem('rewardHubBannerAds');
+    if (storedBannerAds) {
+      setBannerAds(JSON.parse(storedBannerAds));
+    } else {
+      localStorage.setItem('rewardHubBannerAds', JSON.stringify(bannerAds));
+    }
   }, []);
 
   useEffect(() => {
@@ -206,105 +229,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [rewards]);
   
   useEffect(() => {
-    localStorage.setItem('rewardHubPopupAds', JSON.stringify(popupAds));
-  }, [popupAds]);
-  
-  useEffect(() => {
-    localStorage.setItem('rewardHubBannerAds', JSON.stringify(bannerAds));
-  }, [bannerAds]);
-  
-  useEffect(() => {
     localStorage.setItem('rewardHubWithdrawalRequests', JSON.stringify(withdrawalRequests));
   }, [withdrawalRequests]);
   
   useEffect(() => {
     localStorage.setItem('rewardHubSettings', JSON.stringify(settings));
   }, [settings]);
+  
+  useEffect(() => {
+    localStorage.setItem('rewardHubPopupAds', JSON.stringify(popupAds));
+  }, [popupAds]);
+  
+  useEffect(() => {
+    localStorage.setItem('rewardHubBannerAds', JSON.stringify(bannerAds));
+  }, [bannerAds]);
 
-  const addTask = (task: Omit<Task, 'id'>) => {
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString()
-    };
-    setTasks([...tasks, newTask]);
-    toast.success('Task added successfully');
-  };
-
-  const updateTask = (id: string, task: Partial<Task>) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, ...task } : t));
-    toast.success('Task updated successfully');
-  };
-
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
-    toast.success('Task deleted successfully');
-  };
-
-  const addReward = (reward: Omit<Reward, 'id'>) => {
-    const newReward: Reward = {
-      ...reward,
-      id: Date.now().toString()
-    };
-    setRewards([...rewards, newReward]);
-    toast.success('Reward added successfully');
-  };
-
-  const updateReward = (id: string, reward: Partial<Reward>) => {
-    setRewards(rewards.map(r => r.id === id ? { ...r, ...reward } : r));
-    toast.success('Reward updated successfully');
-  };
-
-  const deleteReward = (id: string) => {
-    setRewards(rewards.filter(r => r.id !== id));
-    toast.success('Reward deleted successfully');
-  };
-
-  const addPopupAd = (ad: Omit<PopupAd, 'id'>) => {
-    const newAd: PopupAd = {
-      ...ad,
-      id: Date.now().toString()
-    };
-    setPopupAds([...popupAds, newAd]);
-    toast.success('Popup ad added successfully');
-  };
-
-  const updatePopupAd = (id: string, ad: Partial<PopupAd>) => {
-    setPopupAds(popupAds.map(a => a.id === id ? { ...a, ...ad } : a));
-    toast.success('Popup ad updated successfully');
-  };
-
-  const deletePopupAd = (id: string) => {
-    setPopupAds(popupAds.filter(a => a.id !== id));
-    toast.success('Popup ad deleted successfully');
-  };
-
-  const addBannerAd = (ad: Omit<BannerAd, 'id'>) => {
-    const newAd: BannerAd = {
-      ...ad,
-      id: Date.now().toString()
-    };
-    setBannerAds([...bannerAds, newAd]);
-    toast.success('Banner ad added successfully');
-  };
-
-  const updateBannerAd = (id: string, ad: Partial<BannerAd>) => {
-    setBannerAds(bannerAds.map(a => a.id === id ? { ...a, ...ad } : a));
-    toast.success('Banner ad updated successfully');
-  };
-
-  const deleteBannerAd = (id: string) => {
-    setBannerAds(bannerAds.filter(a => a.id !== id));
-    toast.success('Banner ad deleted successfully');
-  };
-
-  const requestWithdrawal = (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt'>): boolean => {
+  const requestWithdrawal = (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt' | 'username'>): boolean => {
     if (!user) {
-      toast.error('You must be logged in to request a withdrawal');
-      return false;
-    }
-    
-    if (user.coins < request.coinAmount) {
-      toast.error('Not enough coins to make this withdrawal');
+      toast.error(`You must be logged in to request a withdrawal`);
       return false;
     }
     
@@ -312,55 +254,156 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       toast.error(`You need at least 5 referrals to make a withdrawal`);
       return false;
     }
-
+    
     const newRequest: WithdrawalRequest = {
-      ...request,
       id: Date.now().toString(),
       status: 'pending',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      username: user.username,
+      ...request
     };
     
     setWithdrawalRequests([...withdrawalRequests, newRequest]);
-    toast.success('Withdrawal request submitted successfully');
+    toast.success(`Withdrawal request submitted successfully`);
     return true;
   };
 
-  const updateWithdrawalStatus = (id: string, status: 'approved' | 'rejected') => {
-    setWithdrawalRequests(
-      withdrawalRequests.map(wr => 
-        wr.id === id ? { ...wr, status } : wr
-      )
+  const approveWithdrawal = (requestId: string) => {
+    const updatedRequests = withdrawalRequests.map(req => 
+      req.id === requestId ? { ...req, status: 'approved' } : req
     );
-    toast.success(`Withdrawal request ${status}`);
+    setWithdrawalRequests(updatedRequests);
+    toast.success(`Withdrawal request approved`);
   };
-
-  const updateSettings = (newSettings: Partial<SystemSettings>) => {
+  
+  const rejectWithdrawal = (requestId: string) => {
+    const updatedRequests = withdrawalRequests.map(req => 
+      req.id === requestId ? { ...req, status: 'rejected' } : req
+    );
+    setWithdrawalRequests(updatedRequests);
+    toast.success(`Withdrawal request rejected`);
+  };
+  
+  const addTask = (task: Omit<Task, 'id'>) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      ...task
+    };
+    setTasks([...tasks, newTask]);
+    toast.success(`Task added successfully`);
+  };
+  
+  const updateTask = (taskId: string, task: Partial<Task>) => {
+    const updatedTasks = tasks.map(t => 
+      t.id === taskId ? { ...t, ...task } : t
+    );
+    setTasks(updatedTasks);
+    toast.success(`Task updated successfully`);
+  };
+  
+  const deleteTask = (taskId: string) => {
+    const updatedTasks = tasks.filter(t => t.id !== taskId);
+    setTasks(updatedTasks);
+    toast.success(`Task deleted successfully`);
+  };
+  
+  const addReward = (reward: Omit<Reward, 'id'>) => {
+    const newReward: Reward = {
+      id: Date.now().toString(),
+      ...reward
+    };
+    setRewards([...rewards, newReward]);
+    toast.success(`Reward added successfully`);
+  };
+  
+  const updateReward = (rewardId: string, reward: Partial<Reward>) => {
+    const updatedRewards = rewards.map(r => 
+      r.id === rewardId ? { ...r, ...reward } : r
+    );
+    setRewards(updatedRewards);
+    toast.success(`Reward updated successfully`);
+  };
+  
+  const deleteReward = (rewardId: string) => {
+    const updatedRewards = rewards.filter(r => r.id !== rewardId);
+    setRewards(updatedRewards);
+    toast.success(`Reward deleted successfully`);
+  };
+  
+  const updateSettings = (newSettings: Partial<SettingsType>) => {
     setSettings({ ...settings, ...newSettings });
-    toast.success('Settings updated successfully');
+    toast.success(`Settings updated successfully`);
+  };
+  
+  const addPopupAd = (ad: Omit<PopupAd, 'id'>) => {
+    const newAd: PopupAd = {
+      id: Date.now().toString(),
+      ...ad
+    };
+    setPopupAds([...popupAds, newAd]);
+    toast.success(`Popup ad added successfully`);
+  };
+  
+  const updatePopupAd = (adId: string, ad: Partial<PopupAd>) => {
+    const updatedAds = popupAds.map(a => 
+      a.id === adId ? { ...a, ...ad } : a
+    );
+    setPopupAds(updatedAds);
+    toast.success(`Popup ad updated successfully`);
+  };
+  
+  const deletePopupAd = (adId: string) => {
+    const updatedAds = popupAds.filter(a => a.id !== adId);
+    setPopupAds(updatedAds);
+    toast.success(`Popup ad deleted successfully`);
+  };
+  
+  const addBannerAd = (ad: Omit<BannerAd, 'id'>) => {
+    const newAd: BannerAd = {
+      id: Date.now().toString(),
+      ...ad
+    };
+    setBannerAds([...bannerAds, newAd]);
+    toast.success(`Banner ad added successfully`);
+  };
+  
+  const updateBannerAd = (adId: string, ad: Partial<BannerAd>) => {
+    const updatedAds = bannerAds.map(a => 
+      a.id === adId ? { ...a, ...ad } : a
+    );
+    setBannerAds(updatedAds);
+    toast.success(`Banner ad updated successfully`);
+  };
+  
+  const deleteBannerAd = (adId: string) => {
+    const updatedAds = bannerAds.filter(a => a.id !== adId);
+    setBannerAds(updatedAds);
+    toast.success(`Banner ad deleted successfully`);
   };
 
   const value = {
     tasks,
     rewards,
-    popupAds,
-    bannerAds,
     withdrawalRequests,
     settings,
+    popupAds,
+    bannerAds,
+    requestWithdrawal,
+    approveWithdrawal,
+    rejectWithdrawal,
     addTask,
     updateTask,
     deleteTask,
     addReward,
     updateReward,
     deleteReward,
+    updateSettings,
     addPopupAd,
     updatePopupAd,
     deletePopupAd,
     addBannerAd,
     updateBannerAd,
-    deleteBannerAd,
-    requestWithdrawal,
-    updateWithdrawalStatus,
-    updateSettings
+    deleteBannerAd
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
