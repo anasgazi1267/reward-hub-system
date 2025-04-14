@@ -15,6 +15,7 @@ import { Reward } from '@/lib/types';
 import { Coins } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
+import { toast } from '@/components/ui/sonner';
 
 interface RedeemModalProps {
   reward: Reward | null;
@@ -23,7 +24,7 @@ interface RedeemModalProps {
 }
 
 const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
-  const { user, deductCoins } = useAuth();
+  const { user, deductCoins, meetsWithdrawalRequirements } = useAuth();
   const { requestWithdrawal } = useData();
   const [playerUsername, setPlayerUsername] = useState('');
   const [playerId, setPlayerId] = useState('');
@@ -40,41 +41,51 @@ const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
     
     // Validate fields
     if (needsGameInfo && (!playerUsername || !playerId)) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       setIsSubmitting(false);
       return;
     }
     
     if (isGiftCard && !email) {
-      alert('Please provide your email address');
+      toast.error('Please provide your email address');
       setIsSubmitting(false);
       return;
     }
     
     // Check if user has enough coins
     if (user.coins < reward.coinCost) {
-      alert('You do not have enough coins for this reward');
+      toast.error('You do not have enough coins for this reward');
       setIsSubmitting(false);
       return;
     }
     
-    // Deduct coins from user account
-    const success = deductCoins(reward.coinCost);
+    // Check if user meets withdrawal requirements before processing
+    if (!meetsWithdrawalRequirements()) {
+      setIsSubmitting(false);
+      onClose(); // Close the modal
+      return; // The requestWithdrawal function will handle the redirect and error message
+    }
+    
+    // Prepare the withdrawal request
+    const withdrawalData = {
+      userId: user.id,
+      username: user.username,
+      rewardId: reward.id,
+      rewardName: reward.name,
+      coinAmount: reward.coinCost,
+      additionalInfo: {
+        playerUsername: needsGameInfo ? playerUsername : undefined,
+        playerId: needsGameInfo ? playerId : undefined,
+        email: isGiftCard ? email : undefined
+      }
+    };
+    
+    // Submit withdrawal request and deduct coins if successful
+    const success = requestWithdrawal(withdrawalData);
     
     if (success) {
-      // Submit withdrawal request
-      requestWithdrawal({
-        userId: user.id,
-        username: user.username,
-        rewardId: reward.id,
-        rewardName: reward.name,
-        coinAmount: reward.coinCost,
-        additionalInfo: {
-          playerUsername: needsGameInfo ? playerUsername : undefined,
-          playerId: needsGameInfo ? playerId : undefined,
-          email: isGiftCard ? email : undefined
-        }
-      });
+      // Deduct coins from user account
+      deductCoins(reward.coinCost);
       
       // Reset form and close modal
       setPlayerUsername('');

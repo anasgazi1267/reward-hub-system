@@ -11,6 +11,7 @@ export interface User {
   referredBy?: string;
   referralCount: number;
   completedTasks: string[];
+  taskCompletionTimes: Record<string, string>; // Map of taskId to ISO timestamp
   isAdmin: boolean;
 }
 
@@ -37,9 +38,11 @@ export interface Task {
   targetUrl: string;
   imageUrl?: string;
   requirements?: string;
+  frequency?: TaskFrequency;
 }
 
-export type TaskType = 'Telegram' | 'YouTube' | 'Custom';
+export type TaskType = 'Telegram' | 'YouTube' | 'Daily' | 'Custom';
+export type TaskFrequency = 'once' | 'daily';
 
 // Ad Types
 export interface PopupAd {

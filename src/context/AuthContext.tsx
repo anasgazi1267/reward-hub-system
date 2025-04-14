@@ -13,6 +13,7 @@ type AuthContextType = {
   addCoins: (amount: number) => void;
   deductCoins: (amount: number) => boolean;
   completeTask: (taskId: string) => void;
+  meetsWithdrawalRequirements: () => boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +32,7 @@ const mockUsers: User[] = [
     referralCode: 'ADMIN123',
     referralCount: 0,
     completedTasks: [],
+    taskCompletionTimes: {},
     isAdmin: true
   }
 ];
@@ -142,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         referralCode: newReferralCode,
         referralCount: 0,
         completedTasks: [],
+        taskCompletionTimes: {},
         isAdmin: false
       };
       
@@ -238,15 +241,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const completeTask = (taskId: string) => {
     if (!user) return;
     
-    // Check if task is already completed
-    if (user.completedTasks.includes(taskId)) {
-      toast.error('Task already completed!');
-      return;
+    // Always mark the completion time
+    const currentTime = new Date().toISOString();
+    const updatedTimes = {
+      ...user.taskCompletionTimes,
+      [taskId]: currentTime
+    };
+    
+    // For non-daily tasks, also add to completedTasks array if not already there
+    let updatedCompletedTasks = [...user.completedTasks];
+    if (!user.completedTasks.includes(taskId)) {
+      updatedCompletedTasks.push(taskId);
     }
     
     const updatedUser = {
       ...user,
-      completedTasks: [...user.completedTasks, taskId]
+      completedTasks: updatedCompletedTasks,
+      taskCompletionTimes: updatedTimes
     };
     
     setUser(updatedUser);
@@ -260,6 +271,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('rewardHubUsers', JSON.stringify(updatedUsers));
   };
 
+  // Check if user meets withdrawal requirements
+  const meetsWithdrawalRequirements = (): boolean => {
+    if (!user) return false;
+    return user.referralCount >= 5; // Hardcoded requirement of 5 referrals
+  };
+
   const value = {
     user,
     isLoading,
@@ -269,7 +286,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateUserCoins,
     addCoins,
     deductCoins,
-    completeTask
+    completeTask,
+    meetsWithdrawalRequirements
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Task, 
@@ -10,6 +9,7 @@ import {
 } from '@/lib/types';
 import { useAuth } from './AuthContext';
 import { toast } from '@/components/ui/sonner';
+import { useNavigate } from 'react-router-dom';
 
 type DataContextType = {
   tasks: Task[];
@@ -30,12 +30,11 @@ type DataContextType = {
   addBannerAd: (ad: Omit<BannerAd, 'id'>) => void;
   updateBannerAd: (id: string, ad: Partial<BannerAd>) => void;
   deleteBannerAd: (id: string) => void;
-  requestWithdrawal: (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt'>) => void;
+  requestWithdrawal: (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt'>) => boolean;
   updateWithdrawalStatus: (id: string, status: 'approved' | 'rejected') => void;
   updateSettings: (newSettings: Partial<SystemSettings>) => void;
 };
 
-// Mock initial data
 const initialTasks: Task[] = [
   {
     id: '1',
@@ -53,6 +52,16 @@ const initialTasks: Task[] = [
     type: 'YouTube',
     coinReward: 150,
     targetUrl: 'https://youtube.com/c/examplechannel',
+    imageUrl: '/placeholder.svg'
+  },
+  {
+    id: '3',
+    title: 'Daily Reward',
+    description: 'Claim your daily reward - come back every day for more coins!',
+    type: 'Daily',
+    frequency: 'daily',
+    coinReward: 50,
+    targetUrl: '#',
     imageUrl: '/placeholder.svg'
   }
 ];
@@ -160,7 +169,8 @@ const initialSettings: SystemSettings = {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, meetsWithdrawalRequirements } = useAuth();
+  const navigate = useNavigate();
   
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [rewards, setRewards] = useState<Reward[]>(initialRewards);
@@ -169,7 +179,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>(initialWithdrawalRequests);
   const [settings, setSettings] = useState<SystemSettings>(initialSettings);
 
-  // Load data from localStorage on initial render
   useEffect(() => {
     const storedTasks = localStorage.getItem('rewardHubTasks');
     if (storedTasks) setTasks(JSON.parse(storedTasks));
@@ -190,7 +199,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (storedSettings) setSettings(JSON.parse(storedSettings));
   }, []);
 
-  // Update localStorage when data changes
   useEffect(() => {
     localStorage.setItem('rewardHubTasks', JSON.stringify(tasks));
   }, [tasks]);
@@ -215,7 +223,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('rewardHubSettings', JSON.stringify(settings));
   }, [settings]);
 
-  // Task functions
   const addTask = (task: Omit<Task, 'id'>) => {
     const newTask: Task = {
       ...task,
@@ -235,7 +242,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     toast.success('Task deleted successfully');
   };
 
-  // Reward functions
   const addReward = (reward: Omit<Reward, 'id'>) => {
     const newReward: Reward = {
       ...reward,
@@ -255,7 +261,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     toast.success('Reward deleted successfully');
   };
 
-  // Popup ad functions
   const addPopupAd = (ad: Omit<PopupAd, 'id'>) => {
     const newAd: PopupAd = {
       ...ad,
@@ -275,7 +280,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     toast.success('Popup ad deleted successfully');
   };
 
-  // Banner ad functions
   const addBannerAd = (ad: Omit<BannerAd, 'id'>) => {
     const newAd: BannerAd = {
       ...ad,
@@ -295,22 +299,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     toast.success('Banner ad deleted successfully');
   };
 
-  // Withdrawal request functions
-  const requestWithdrawal = (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt'>) => {
+  const requestWithdrawal = (request: Omit<WithdrawalRequest, 'id' | 'status' | 'createdAt'>): boolean => {
     if (!user) {
       toast.error('You must be logged in to request a withdrawal');
-      return;
+      return false;
     }
     
     if (user.coins < request.coinAmount) {
       toast.error('Not enough coins to make this withdrawal');
-      return;
+      return false;
     }
     
-    // Check if user has enough referrals
-    if (user.referralCount < settings.minReferralsForWithdrawal) {
-      toast.error(`You need at least ${settings.minReferralsForWithdrawal} referrals to make a withdrawal`);
-      return;
+    if (!meetsWithdrawalRequirements()) {
+      toast.error(`You need at least 5 referrals to make a withdrawal`);
+      navigate('/profile');
+      return false;
     }
 
     const newRequest: WithdrawalRequest = {
@@ -322,6 +325,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     
     setWithdrawalRequests([...withdrawalRequests, newRequest]);
     toast.success('Withdrawal request submitted successfully');
+    return true;
   };
 
   const updateWithdrawalStatus = (id: string, status: 'approved' | 'rejected') => {
@@ -333,7 +337,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     toast.success(`Withdrawal request ${status}`);
   };
 
-  // Settings functions
   const updateSettings = (newSettings: Partial<SystemSettings>) => {
     setSettings({ ...settings, ...newSettings });
     toast.success('Settings updated successfully');
