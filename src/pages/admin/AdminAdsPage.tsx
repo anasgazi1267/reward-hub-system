@@ -136,7 +136,12 @@ const AdminAdsPage = () => {
       updateBannerAd(editingBannerAd.id, data);
       toast.success("Banner ad updated successfully");
     } else {
-      addBannerAd(data);
+      // Ensure all required fields are provided when adding a new banner ad
+      const newBannerAd = {
+        name: data.name,
+        htmlContent: data.htmlContent
+      };
+      addBannerAd(newBannerAd);
       toast.success("Banner ad added successfully");
     }
     setActiveBannerAdDialog(false);
@@ -148,7 +153,13 @@ const AdminAdsPage = () => {
       updatePopupAd(editingPopupAd.id, data);
       toast.success("Popup ad updated successfully");
     } else {
-      addPopupAd(data);
+      // Ensure all required fields are provided when adding a new popup ad
+      const newPopupAd = {
+        htmlContent: data.htmlContent,
+        durationSeconds: data.durationSeconds,
+        coinReward: data.coinReward
+      };
+      addPopupAd(newPopupAd);
       toast.success("Popup ad added successfully");
     }
     setActivePopupAdDialog(false);

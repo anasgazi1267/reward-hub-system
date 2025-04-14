@@ -122,7 +122,18 @@ const AdminTasksPage = () => {
       updateTask(editingTask.id, data);
       toast.success("Task updated successfully");
     } else {
-      addTask(data);
+      // Ensure all required fields exist when adding a new task
+      const newTask = {
+        title: data.title,
+        description: data.description,
+        type: data.type,
+        coinReward: data.coinReward,
+        targetUrl: data.targetUrl,
+        imageUrl: data.imageUrl || "/placeholder.svg",
+        requirements: data.requirements || "",
+        frequency: data.frequency || "once",
+      };
+      addTask(newTask);
       toast.success("Task added successfully");
     }
     setIsDialogOpen(false);
