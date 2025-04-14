@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Dialog, 
   DialogContent, 
@@ -24,6 +25,7 @@ interface RedeemModalProps {
 }
 
 const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
+  const navigate = useNavigate();
   const { user, deductCoins, meetsWithdrawalRequirements } = useAuth();
   const { requestWithdrawal } = useData();
   const [playerUsername, setPlayerUsername] = useState('');
@@ -63,7 +65,8 @@ const RedeemModal = ({ reward, isOpen, onClose }: RedeemModalProps) => {
     if (!meetsWithdrawalRequirements()) {
       setIsSubmitting(false);
       onClose(); // Close the modal
-      return; // The requestWithdrawal function will handle the redirect and error message
+      navigate('/profile'); // Redirect to profile for referrals
+      return;
     }
     
     // Prepare the withdrawal request

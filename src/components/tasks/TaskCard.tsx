@@ -4,7 +4,6 @@ import { Task } from '@/lib/types';
 import { Coins, ExternalLink, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
-import { useNavigate } from 'react-router-dom';
 import { isSameDay } from 'date-fns';
 
 interface TaskCardProps {
@@ -14,7 +13,6 @@ interface TaskCardProps {
 const TaskCard = ({ task }: TaskCardProps) => {
   const { title, description, coinReward, type, targetUrl, imageUrl, frequency } = task;
   const { user, addCoins, completeTask } = useAuth();
-  const navigate = useNavigate();
   
   if (!user) return null;
   

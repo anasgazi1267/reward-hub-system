@@ -9,7 +9,6 @@ import {
 } from '@/lib/types';
 import { useAuth } from './AuthContext';
 import { toast } from '@/components/ui/sonner';
-import { useNavigate } from 'react-router-dom';
 
 type DataContextType = {
   tasks: Task[];
@@ -170,7 +169,6 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const { user, meetsWithdrawalRequirements } = useAuth();
-  const navigate = useNavigate();
   
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [rewards, setRewards] = useState<Reward[]>(initialRewards);
@@ -312,7 +310,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     
     if (!meetsWithdrawalRequirements()) {
       toast.error(`You need at least 5 referrals to make a withdrawal`);
-      navigate('/profile');
       return false;
     }
 
