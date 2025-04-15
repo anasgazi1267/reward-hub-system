@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useData } from '@/context/DataContext';
+import { useData } from '@/context/DataProvider';
 import MainLayout from '@/components/layout/MainLayout';
 import PageTitle from '@/components/shared/PageTitle';
 import AdBanner from '@/components/ads/AdBanner';
@@ -33,10 +33,13 @@ const RewardsPage = () => {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
   
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+  
+  if (!user) return null;
   
   const categories: Array<RewardCategory | 'All'> = [
     'All',

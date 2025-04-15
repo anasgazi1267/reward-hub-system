@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
 import PageTitle from '@/components/shared/PageTitle';
@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Users, Copy, Share2 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import { useData } from '@/context/DataContext';
+import { useData } from '@/context/DataProvider';
 import { useNavigate } from 'react-router-dom';
 
 const InvitePage = () => {
@@ -18,10 +18,13 @@ const InvitePage = () => {
   const navigate = useNavigate();
   const [copyText, setCopyText] = useState('Copy');
   
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+  
+  if (!user) return null;
   
   const referralLink = `${window.location.origin}/register?ref=${user.referralCode}`;
   const maxReferrals = 10; // We can make this dynamic from settings later

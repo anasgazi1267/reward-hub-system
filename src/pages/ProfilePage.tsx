@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
 import PageTitle from '@/components/shared/PageTitle';
@@ -17,17 +17,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
-import { useData } from '@/context/DataContext';
+import { useData } from '@/context/DataProvider';
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
   const { tasks } = useData();
   const navigate = useNavigate();
   
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+  
+  if (!user) return null;
   
   const completedTasksCount = user.completedTasks.length;
   const totalTasksCount = tasks.length;

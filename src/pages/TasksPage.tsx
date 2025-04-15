@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useData } from '@/context/DataContext';
+import { useData } from '@/context/DataProvider';
 import MainLayout from '@/components/layout/MainLayout';
 import PageTitle from '@/components/shared/PageTitle';
 import AdBanner from '@/components/ads/AdBanner';
@@ -27,10 +27,13 @@ const TasksPage = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'pending'>('all');
   const [typeFilters, setTypeFilters] = useState<TaskType[]>([]);
   
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+  
+  if (!user) return null;
   
   // Filter tasks
   const filteredTasks = tasks.filter(task => {
