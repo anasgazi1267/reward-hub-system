@@ -2,300 +2,535 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
-type AuthContextType = {
+interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   register: (username: string, email: string, password: string, referralCode?: string) => Promise<boolean>;
-  logout: () => void;
-  updateUserCoins: (newCoins: number) => void;
-  addCoins: (amount: number) => void;
+  logout: () => Promise<void>;
+  isLoading: boolean;
+  addCoins: (amount: number) => boolean;
   deductCoins: (amount: number) => boolean;
-  completeTask: (taskId: string) => void;
+  completeTask: (taskId: string) => boolean;
+  hasCompletedTask: (taskId: string) => boolean;
+  canCompleteTask: (taskId: string, frequency?: string) => boolean;
   meetsWithdrawalRequirements: () => boolean;
-};
+}
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-// Mock admin user
-const ADMIN_USERNAME = 'anasgazi11';
-const ADMIN_PASSWORD = 'Anas1999@';
-
-// Mock initial data
-const mockUsers: User[] = [
-  {
-    id: '1',
-    username: ADMIN_USERNAME,
-    email: 'admin@rewardhub.com',
-    coins: 5000,
-    referralCode: 'ADMIN123',
-    referralCount: 0,
-    completedTasks: [],
-    taskCompletionTimes: {},
-    isAdmin: true
-  }
-];
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
+  // Check for referral code in URL
   useEffect(() => {
-    // Load user from localStorage
-    const storedUser = localStorage.getItem('rewardHubUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const params = new URLSearchParams(location.search);
+    const referralCode = params.get('ref');
     
-    // Load users from localStorage or use mock data
-    const storedUsers = localStorage.getItem('rewardHubUsers');
-    if (storedUsers) {
-      setUsers(JSON.parse(storedUsers));
-    } else {
-      localStorage.setItem('rewardHubUsers', JSON.stringify(users));
+    if (referralCode) {
+      // Store referral code in session storage
+      sessionStorage.setItem('referralCode', referralCode);
     }
+  }, [location]);
+
+  // Session handling
+  useEffect(() => {
+    const checkSession = async () => {
+      setIsLoading(true);
+      try {
+        // Check current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+          } else if (userData) {
+            // Convert database user to app user format
+            const appUser: User = {
+              id: userData.id,
+              username: userData.username,
+              email: userData.email,
+              coins: userData.coins,
+              referralCode: userData.referral_code,
+              referredBy: userData.referred_by || undefined,
+              referralCount: userData.referral_count,
+              completedTasks: [], // Load from completed_tasks table as needed
+              taskCompletionTimes: {}, // Load from completed_tasks table as needed
+              isAdmin: userData.is_admin
+            };
+            setUser(appUser);
+            
+            // Load completed tasks
+            const { data: completedTasksData, error: completedTasksError } = await supabase
+              .from('completed_tasks')
+              .select('task_id, completed_at')
+              .eq('user_id', userData.id);
+              
+            if (!completedTasksError && completedTasksData) {
+              appUser.completedTasks = completedTasksData.map(task => task.task_id);
+              
+              const taskCompletionTimes: Record<string, string> = {};
+              completedTasksData.forEach(task => {
+                taskCompletionTimes[task.task_id] = task.completed_at;
+              });
+              
+              appUser.taskCompletionTimes = taskCompletionTimes;
+              setUser({ ...appUser });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    setIsLoading(false);
+    checkSession();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          // User just signed in, fetch their data
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+          } else if (userData) {
+            const appUser: User = {
+              id: userData.id,
+              username: userData.username,
+              email: userData.email,
+              coins: userData.coins,
+              referralCode: userData.referral_code,
+              referredBy: userData.referred_by || undefined,
+              referralCount: userData.referral_count,
+              completedTasks: [],
+              taskCompletionTimes: {},
+              isAdmin: userData.is_admin
+            };
+            
+            // Load completed tasks
+            const { data: completedTasksData, error: completedTasksError } = await supabase
+              .from('completed_tasks')
+              .select('task_id, completed_at')
+              .eq('user_id', userData.id);
+              
+            if (!completedTasksError && completedTasksData) {
+              appUser.completedTasks = completedTasksData.map(task => task.task_id);
+              
+              const taskCompletionTimes: Record<string, string> = {};
+              completedTasksData.forEach(task => {
+                taskCompletionTimes[task.task_id] = task.completed_at;
+              });
+              
+              appUser.taskCompletionTimes = taskCompletionTimes;
+            }
+            
+            setUser(appUser);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Save users to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('rewardHubUsers', JSON.stringify(users));
-  }, [users]);
-
-  // Login function
-  const login = async (username: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      // Check if admin
-      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        const adminUser = users.find(u => u.username === ADMIN_USERNAME);
-        if (adminUser) {
-          setUser(adminUser);
-          localStorage.setItem('rewardHubUser', JSON.stringify(adminUser));
-          toast.success('Welcome back, Admin!');
-          return true;
-        }
-      }
-      
-      // Check regular users
-      const foundUser = users.find(u => u.username === username);
-      
-      if (foundUser) {
-        // In a real app, you would hash and compare passwords
-        // This is just a simulation
-        setUser(foundUser);
-        localStorage.setItem('rewardHubUser', JSON.stringify(foundUser));
-        toast.success(`Welcome back, ${foundUser.username}!`);
-        return true;
-      } else {
-        toast.error('Invalid username or password');
+      if (error) {
+        console.error('Login error:', error);
+        toast.error(error.message);
         return false;
       }
-    } catch (error) {
+      
+      toast.success('Logged in successfully');
+      navigate('/');
+      return true;
+    } catch (error: any) {
       console.error('Login error:', error);
-      toast.error('An error occurred during login');
+      toast.error(error.message || 'An error occurred during login');
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Register function
-  const register = async (
-    username: string, 
-    email: string, 
-    password: string, 
-    referralCode?: string
-  ): Promise<boolean> => {
-    setIsLoading(true);
+  const register = async (username: string, email: string, password: string, referralCode?: string): Promise<boolean> => {
+    try {
+      // Check if a valid referral code was provided
+      let referredByUserId: string | null = null;
+      
+      if (referralCode) {
+        const { data: referrerData, error: referrerError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('referral_code', referralCode)
+          .single();
+          
+        if (referrerError) {
+          if (referrerError.code !== 'PGRST116') { // PGRST116 is the error code for "no rows found"
+            console.error('Error checking referral code:', referrerError);
+          }
+        } else if (referrerData) {
+          referredByUserId = referrerData.id;
+        }
+      }
+      
+      // Try to use referral code from URL if not provided directly
+      if (!referredByUserId) {
+        const storedReferralCode = sessionStorage.getItem('referralCode');
+        if (storedReferralCode) {
+          const { data: referrerData, error: referrerError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('referral_code', storedReferralCode)
+            .single();
+            
+          if (!referrerError && referrerData) {
+            referredByUserId = referrerData.id;
+          }
+        }
+      }
+      
+      // Register the user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (authError) {
+        console.error('Registration error:', authError);
+        toast.error(authError.message);
+        return false;
+      }
+      
+      if (!authData.user) {
+        toast.error('Failed to create user account');
+        return false;
+      }
+      
+      // Generate a unique referral code
+      const referralCodeBase = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const uniqueReferralCode = `${referralCodeBase}${Math.floor(Math.random() * 10000)}`;
+      
+      // Create user profile in our users table
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          username,
+          email,
+          coins: 100, // Starting coins
+          referral_code: uniqueReferralCode,
+          referred_by: referredByUserId,
+          referral_count: 0
+        });
+        
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Try to delete the auth user if profile creation fails
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        toast.error('Failed to create user profile');
+        return false;
+      }
+      
+      // If user was referred, update referrer's referral count and add coins
+      if (referredByUserId) {
+        // Get settings
+        const { data: settingsData } = await supabase
+          .from('settings')
+          .select('referral_reward, inviter_reward')
+          .eq('id', 'global')
+          .single();
+          
+        const referralReward = settingsData?.referral_reward || 50;
+        const inviterReward = settingsData?.inviter_reward || 25;
+        
+        // Add coins to new user
+        await supabase
+          .from('users')
+          .update({ coins: 100 + referralReward })
+          .eq('id', authData.user.id);
+          
+        // Add coins and increment referral count for referrer
+        await supabase.rpc('increment_referral_count', {
+          user_id: referredByUserId,
+          coin_reward: inviterReward
+        });
+        
+        // Clear stored referral code
+        sessionStorage.removeItem('referralCode');
+      }
+      
+      toast.success('Account created successfully');
+      navigate('/');
+      return true;
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast.error(error.message || 'An error occurred during registration');
+      return false;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      toast.success('Logged out successfully');
+      navigate('/login');
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast.error(error.message || 'An error occurred during logout');
+    }
+  };
+
+  const addCoins = async (amount: number): Promise<boolean> => {
+    if (!user) {
+      toast.error('You must be logged in to earn coins');
+      return false;
+    }
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Check if username already exists
-      if (users.some(u => u.username === username)) {
-        toast.error('Username already exists');
+      const { error } = await supabase
+        .from('users')
+        .update({ coins: user.coins + amount })
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error('Error adding coins:', error);
+        toast.error('Failed to add coins');
         return false;
       }
-
-      // Check if email already exists
-      if (users.some(u => u.email === email)) {
-        toast.error('Email already exists');
-        return false;
-      }
-
-      // Generate a unique referral code
-      const newReferralCode = `${username.slice(0, 4).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
       
-      // Create new user
-      const newUser: User = {
-        id: Date.now().toString(),
-        username,
-        email,
-        coins: 100, // Starting coins
-        referralCode: newReferralCode,
-        referralCount: 0,
-        completedTasks: [],
-        taskCompletionTimes: {},
-        isAdmin: false
-      };
-      
-      // If there's a referral code, add the referral connection
-      if (referralCode) {
-        const referrer = users.find(u => u.referralCode === referralCode);
-        if (referrer) {
-          newUser.referredBy = referrer.id;
-          
-          // Update referrer's stats and coins
-          const updatedUsers = users.map(u => {
-            if (u.id === referrer.id) {
-              return {
-                ...u,
-                referralCount: u.referralCount + 1,
-                coins: u.coins + 50 // Reward for referral
-              };
-            }
-            return u;
-          });
-          
-          setUsers([...updatedUsers, newUser]);
-          toast.success('Account created with referral bonus!');
-        } else {
-          // Invalid referral code
-          toast.error('Invalid referral code, but account created');
-          setUsers([...users, newUser]);
-        }
-      } else {
-        // No referral code
-        setUsers([...users, newUser]);
-        toast.success('Account created successfully!');
-      }
-      
-      // Log in the new user
-      setUser(newUser);
-      localStorage.setItem('rewardHubUser', JSON.stringify(newUser));
-      
+      setUser({ ...user, coins: user.coins + amount });
       return true;
     } catch (error) {
-      console.error('Registration error:', error);
-      toast.error('An error occurred during registration');
+      console.error('Error in addCoins:', error);
+      toast.error('Failed to add coins');
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('rewardHubUser');
-    toast.success('Logged out successfully');
-  };
-
-  // Update user coins
-  const updateUserCoins = (newCoins: number) => {
-    if (!user) return;
-    
-    const updatedUser = { ...user, coins: newCoins };
-    setUser(updatedUser);
-    localStorage.setItem('rewardHubUser', JSON.stringify(updatedUser));
-    
-    // Update in users array
-    const updatedUsers = users.map(u => 
-      u.id === user.id ? updatedUser : u
-    );
-    setUsers(updatedUsers);
-    localStorage.setItem('rewardHubUsers', JSON.stringify(updatedUsers));
-  };
-
-  // Add coins to user account
-  const addCoins = (amount: number) => {
-    if (!user) return;
-    updateUserCoins(user.coins + amount);
-    toast.success(`Earned ${amount} coins!`);
-  };
-
-  // Deduct coins from user account
-  const deductCoins = (amount: number): boolean => {
-    if (!user) return false;
+  const deductCoins = async (amount: number): Promise<boolean> => {
+    if (!user) {
+      toast.error('You must be logged in to spend coins');
+      return false;
+    }
     
     if (user.coins < amount) {
-      toast.error('Not enough coins!');
+      toast.error(`You don't have enough coins. You need ${amount} coins.`);
       return false;
     }
     
-    updateUserCoins(user.coins - amount);
-    toast.success(`${amount} coins deducted from your account`);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ coins: user.coins - amount })
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error('Error deducting coins:', error);
+        toast.error('Failed to deduct coins');
+        return false;
+      }
+      
+      setUser({ ...user, coins: user.coins - amount });
+      return true;
+    } catch (error) {
+      console.error('Error in deductCoins:', error);
+      toast.error('Failed to deduct coins');
+      return false;
+    }
+  };
+
+  const completeTask = async (taskId: string): Promise<boolean> => {
+    if (!user) {
+      toast.error('You must be logged in to complete tasks');
+      return false;
+    }
+    
+    if (user.completedTasks.includes(taskId)) {
+      // Check if it's a daily task that can be completed again
+      const { data: taskData } = await supabase
+        .from('tasks')
+        .select('frequency')
+        .eq('id', taskId)
+        .single();
+        
+      if (taskData?.frequency !== 'daily') {
+        toast.error('You have already completed this task');
+        return false;
+      }
+      
+      // Check if the task was completed today
+      const lastCompletionTime = user.taskCompletionTimes[taskId];
+      if (lastCompletionTime) {
+        const lastCompletion = new Date(lastCompletionTime);
+        const today = new Date();
+        
+        if (lastCompletion.toDateString() === today.toDateString()) {
+          toast.error('You have already completed this daily task today');
+          return false;
+        }
+      }
+    }
+    
+    try {
+      // Get task reward amount
+      const { data: taskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('coin_reward')
+        .eq('id', taskId)
+        .single();
+        
+      if (taskError) {
+        console.error('Error fetching task:', taskError);
+        toast.error('Failed to complete task');
+        return false;
+      }
+      
+      const coinReward = taskData.coin_reward;
+      
+      // Add completed task record
+      const now = new Date().toISOString();
+      const { error: completionError } = await supabase
+        .from('completed_tasks')
+        .upsert({
+          user_id: user.id,
+          task_id: taskId,
+          completed_at: now
+        });
+        
+      if (completionError) {
+        console.error('Error recording task completion:', completionError);
+        toast.error('Failed to record task completion');
+        return false;
+      }
+      
+      // Add coins to user
+      const { error: coinError } = await supabase
+        .from('users')
+        .update({ coins: user.coins + coinReward })
+        .eq('id', user.id);
+        
+      if (coinError) {
+        console.error('Error adding coins for task completion:', coinError);
+        toast.error('Failed to add coins for task completion');
+        return false;
+      }
+      
+      // Update local user state
+      const updatedCompletedTasks = [...user.completedTasks];
+      if (!updatedCompletedTasks.includes(taskId)) {
+        updatedCompletedTasks.push(taskId);
+      }
+      
+      const updatedTaskCompletionTimes = { ...user.taskCompletionTimes, [taskId]: now };
+      
+      setUser({
+        ...user,
+        coins: user.coins + coinReward,
+        completedTasks: updatedCompletedTasks,
+        taskCompletionTimes: updatedTaskCompletionTimes
+      });
+      
+      toast.success(`Task completed! +${coinReward} coins`);
+      return true;
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error('Failed to complete task');
+      return false;
+    }
+  };
+
+  const hasCompletedTask = (taskId: string): boolean => {
+    if (!user) return false;
+    
+    // If it's a one-time task, simply check if it's in the completed tasks array
+    if (user.completedTasks.includes(taskId)) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  const canCompleteTask = (taskId: string, frequency?: string): boolean => {
+    if (!user) return false;
+    
+    // If it's a one-time task and already completed, can't complete again
+    if (frequency !== 'daily' && user.completedTasks.includes(taskId)) {
+      return false;
+    }
+    
+    // If it's a daily task and already completed today, can't complete again
+    if (frequency === 'daily' && user.completedTasks.includes(taskId)) {
+      const lastCompletionTime = user.taskCompletionTimes[taskId];
+      if (lastCompletionTime) {
+        const lastCompletion = new Date(lastCompletionTime);
+        const today = new Date();
+        
+        if (lastCompletion.toDateString() === today.toDateString()) {
+          return false;
+        }
+      }
+    }
+    
     return true;
   };
 
-  // Mark task as completed
-  const completeTask = (taskId: string) => {
-    if (!user) return;
-    
-    // Always mark the completion time
-    const currentTime = new Date().toISOString();
-    const updatedTimes = {
-      ...user.taskCompletionTimes,
-      [taskId]: currentTime
-    };
-    
-    // For non-daily tasks, also add to completedTasks array if not already there
-    let updatedCompletedTasks = [...user.completedTasks];
-    if (!user.completedTasks.includes(taskId)) {
-      updatedCompletedTasks.push(taskId);
-    }
-    
-    const updatedUser = {
-      ...user,
-      completedTasks: updatedCompletedTasks,
-      taskCompletionTimes: updatedTimes
-    };
-    
-    setUser(updatedUser);
-    localStorage.setItem('rewardHubUser', JSON.stringify(updatedUser));
-    
-    // Update in users array
-    const updatedUsers = users.map(u => 
-      u.id === user.id ? updatedUser : u
-    );
-    setUsers(updatedUsers);
-    localStorage.setItem('rewardHubUsers', JSON.stringify(updatedUsers));
-  };
-
-  // Check if user meets withdrawal requirements
   const meetsWithdrawalRequirements = (): boolean => {
     if (!user) return false;
-    return user.referralCount >= 5; // Hardcoded requirement of 5 referrals
+    
+    // Check if user has enough referrals
+    return user.referralCount >= 5;
   };
 
-  const value = {
-    user,
-    isLoading,
-    login,
-    register,
-    logout,
-    updateUserCoins,
-    addCoins,
-    deductCoins,
-    completeTask,
-    meetsWithdrawalRequirements
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  return (
+    <AuthContext.Provider value={{
+      user,
+      login,
+      register,
+      logout,
+      isLoading,
+      addCoins,
+      deductCoins,
+      completeTask,
+      hasCompletedTask,
+      canCompleteTask,
+      meetsWithdrawalRequirements,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

@@ -25,7 +25,8 @@ import {
   FormItem, 
   FormLabel, 
   FormControl, 
-  FormMessage 
+  FormMessage,
+  FormDescription 
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { 
@@ -39,11 +40,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "@/components/ui/sonner";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Image, Loader2 } from "lucide-react";
 
 // Layout components
 import MainLayout from "@/components/layout/MainLayout";
 import PageTitle from "@/components/shared/PageTitle";
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -54,15 +57,18 @@ const taskSchema = z.object({
   imageUrl: z.string().optional(),
   requirements: z.string().optional(),
   frequency: z.enum(["once", "daily"]).optional(),
+  image: z.instanceof(FileList).optional()
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 const AdminTasksPage = () => {
-  const { tasks, addTask, updateTask, deleteTask } = useData();
+  const { tasks, addTask, updateTask, deleteTask, uploadImage } = useData();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -87,6 +93,7 @@ const AdminTasksPage = () => {
   // Open dialog for creating a new task
   const handleAddTask = () => {
     setEditingTask(null);
+    setImagePreview(null);
     form.reset({
       title: "",
       description: "",
@@ -103,6 +110,7 @@ const AdminTasksPage = () => {
   // Open dialog for editing an existing task
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
+    setImagePreview(task.imageUrl || null);
     form.reset({
       title: task.title,
       description: task.description,
@@ -116,33 +124,69 @@ const AdminTasksPage = () => {
     setIsDialogOpen(true);
   };
 
-  // Handle task form submission
-  const onSubmit = (data: TaskFormValues) => {
-    if (editingTask) {
-      updateTask(editingTask.id, data);
-      toast.success("Task updated successfully");
-    } else {
-      // Ensure all required fields exist when adding a new task
-      const newTask = {
-        title: data.title,
-        description: data.description,
-        type: data.type,
-        coinReward: data.coinReward,
-        targetUrl: data.targetUrl,
-        imageUrl: data.imageUrl || "/placeholder.svg",
-        requirements: data.requirements || "",
-        frequency: data.frequency || "once",
-      };
-      addTask(newTask);
-      toast.success("Task added successfully");
+  // Handle image upload and preview
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (IMAGE_TYPES.includes(file.type)) {
+        const url = URL.createObjectURL(file);
+        setImagePreview(url);
+        form.setValue("image", files);
+      } else {
+        toast.error("Please select a valid image file (JPEG, PNG, WebP, or GIF)");
+      }
     }
-    setIsDialogOpen(false);
+  };
+
+  // Handle task form submission
+  const onSubmit = async (data: TaskFormValues) => {
+    setUploading(true);
+    try {
+      let finalImageUrl = data.imageUrl;
+      
+      // If there's a new image to upload
+      if (data.image && data.image.length > 0) {
+        const imageUrl = await uploadImage(data.image[0]);
+        if (imageUrl) {
+          finalImageUrl = imageUrl;
+        }
+      }
+      
+      if (editingTask) {
+        await updateTask(editingTask.id, {
+          ...data,
+          imageUrl: finalImageUrl,
+        });
+        toast.success("Task updated successfully");
+      } else {
+        // Ensure all required fields exist when adding a new task
+        const newTask = {
+          title: data.title,
+          description: data.description,
+          type: data.type,
+          coinReward: data.coinReward,
+          targetUrl: data.targetUrl,
+          imageUrl: finalImageUrl,
+          requirements: data.requirements || "",
+          frequency: data.frequency || "once",
+        };
+        await addTask(newTask);
+        toast.success("Task added successfully");
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving task:", error);
+      toast.error("Failed to save task. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Handle task deletion
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = async (taskId: string) => {
     if (confirm("Are you sure you want to delete this task?")) {
-      deleteTask(taskId);
+      await deleteTask(taskId);
       toast.success("Task deleted successfully");
     }
   };
@@ -176,6 +220,7 @@ const AdminTasksPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Image</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Reward</TableHead>
@@ -187,6 +232,19 @@ const AdminTasksPage = () => {
               {filteredTasks.length > 0 ? (
                 filteredTasks.map((task) => (
                   <TableRow key={task.id}>
+                    <TableCell>
+                      <div className="w-10 h-10 rounded overflow-hidden">
+                        <img 
+                          src={task.imageUrl || "/placeholder.svg"} 
+                          alt={task.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">{task.title}</TableCell>
                     <TableCell>{task.type}</TableCell>
                     <TableCell>{task.coinReward} coins</TableCell>
@@ -214,7 +272,7 @@ const AdminTasksPage = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No tasks found.
                   </TableCell>
                 </TableRow>
@@ -322,23 +380,54 @@ const AdminTasksPage = () => {
                     </FormItem>
                   )}
                 />
+                
+                {/* Image Upload */}
                 <FormField
                   control={form.control}
-                  name="imageUrl"
-                  render={({ field }) => (
+                  name="image"
+                  render={({ field: { value, onChange, ...field } }) => (
                     <FormItem>
-                      <FormLabel>Image URL (optional)</FormLabel>
+                      <FormLabel>Task Image</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="/placeholder.svg"
-                          {...field}
-                          value={field.value || ""}
-                        />
+                        <div className="space-y-2">
+                          {imagePreview && (
+                            <div className="w-40 h-40 relative rounded overflow-hidden mx-auto">
+                              <img 
+                                src={imagePreview} 
+                                alt="Preview" 
+                                className="w-full h-full object-cover" 
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                              className="hidden"
+                              id="task-image"
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => document.getElementById('task-image')?.click()}
+                              className="w-full"
+                            >
+                              <Image className="h-4 w-4 mr-2" />
+                              {imagePreview ? 'Change Image' : 'Upload Image'}
+                            </Button>
+                          </div>
+                        </div>
                       </FormControl>
+                      <FormDescription>
+                        Upload an image for this task (JPEG, PNG, WebP, or GIF)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={form.control}
                   name="requirements"
@@ -382,8 +471,15 @@ const AdminTasksPage = () => {
                   )}
                 />
                 <DialogFooter>
-                  <Button type="submit">
-                    {editingTask ? "Update Task" : "Add Task"}
+                  <Button type="submit" disabled={uploading}>
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      editingTask ? "Update Task" : "Add Task"
+                    )}
                   </Button>
                 </DialogFooter>
               </form>

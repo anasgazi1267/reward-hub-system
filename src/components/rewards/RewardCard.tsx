@@ -18,6 +18,10 @@ const RewardCard = ({ reward, onSelect }: RewardCardProps) => {
           src={imageUrl || '/placeholder.svg'}
           alt={name}
           className="object-cover w-full h-full"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = '/placeholder.svg';
+          }}
         />
         {!available && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">

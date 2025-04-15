@@ -9,6 +9,75 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      completed_tasks: {
+        Row: {
+          completed_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completed_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completed_tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rewards: {
+        Row: {
+          available: boolean
+          category: string
+          coin_cost: number
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          name: string
+        }
+        Insert: {
+          available?: boolean
+          category: string
+          coin_cost: number
+          created_at?: string
+          description: string
+          id?: string
+          image_url: string
+          name: string
+        }
+        Update: {
+          available?: boolean
+          category?: string
+          coin_cost?: number
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string
+          name?: string
+        }
+        Relationships: []
+      }
       "Rewardshube database": {
         Row: {
           created_at: string
@@ -23,6 +92,170 @@ export type Database = {
           id?: number
         }
         Relationships: []
+      }
+      settings: {
+        Row: {
+          id: string
+          inviter_reward: number
+          min_referrals_for_withdrawal: number
+          min_withdrawal_coins: number
+          referral_reward: number
+        }
+        Insert: {
+          id?: string
+          inviter_reward?: number
+          min_referrals_for_withdrawal?: number
+          min_withdrawal_coins?: number
+          referral_reward?: number
+        }
+        Update: {
+          id?: string
+          inviter_reward?: number
+          min_referrals_for_withdrawal?: number
+          min_withdrawal_coins?: number
+          referral_reward?: number
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          coin_reward: number
+          created_at: string
+          description: string
+          frequency: string | null
+          id: string
+          image_url: string | null
+          requirements: string | null
+          target_url: string
+          title: string
+          type: string
+        }
+        Insert: {
+          coin_reward: number
+          created_at?: string
+          description: string
+          frequency?: string | null
+          id?: string
+          image_url?: string | null
+          requirements?: string | null
+          target_url: string
+          title: string
+          type: string
+        }
+        Update: {
+          coin_reward?: number
+          created_at?: string
+          description?: string
+          frequency?: string | null
+          id?: string
+          image_url?: string | null
+          requirements?: string | null
+          target_url?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          coins: number
+          created_at: string
+          email: string
+          id: string
+          is_admin: boolean
+          referral_code: string
+          referral_count: number
+          referred_by: string | null
+          username: string
+        }
+        Insert: {
+          coins?: number
+          created_at?: string
+          email: string
+          id: string
+          is_admin?: boolean
+          referral_code: string
+          referral_count?: number
+          referred_by?: string | null
+          username: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          email?: string
+          id?: string
+          is_admin?: boolean
+          referral_code?: string
+          referral_count?: number
+          referred_by?: string | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      withdrawal_requests: {
+        Row: {
+          category: string
+          coin_amount: number
+          created_at: string
+          email: string | null
+          id: string
+          phone_number: string | null
+          player_id: string | null
+          player_username: string | null
+          reward_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          coin_amount: number
+          created_at?: string
+          email?: string | null
+          id?: string
+          phone_number?: string | null
+          player_id?: string | null
+          player_username?: string | null
+          reward_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          coin_amount?: number
+          created_at?: string
+          email?: string | null
+          id?: string
+          phone_number?: string | null
+          player_id?: string | null
+          player_username?: string | null
+          reward_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
