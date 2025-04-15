@@ -1,9 +1,8 @@
+
 import { Button } from '@/components/ui/button';
 import { Task } from '@/lib/types';
 import { Coins, ExternalLink, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useData } from '@/context/DataContext';
-import { isSameDay, differenceInHours } from 'date-fns';
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 
@@ -22,37 +21,26 @@ const TaskCard = ({ task }: TaskCardProps) => {
   const isDaily = frequency === 'daily' || type === 'Daily';
   
   // Check if task is completed
-  let isCompleted = user.completedTasks.includes(task.id);
+  let isCompleted = false;
   
-  // For daily tasks, check if it was completed today
-  if (isDaily && taskCompletionTime) {
-    const completionDate = new Date(taskCompletionTime);
-    const today = new Date();
-    isCompleted = isSameDay(completionDate, today);
-  }
-  
-  // For one-time tasks, always check completed tasks array
+  // For one-time tasks, check if it's in the completedTasks array
   if (!isDaily) {
     isCompleted = user.completedTasks.includes(task.id);
-  }
-  
-  // Function to verify if enough time has passed for daily tasks
-  const canClaimDailyTask = () => {
-    if (!taskCompletionTime) return true;
-    
+  } 
+  // For daily tasks, check if it was completed today
+  else if (taskCompletionTime) {
     const completionDate = new Date(taskCompletionTime);
-    const now = new Date();
-    
-    // If it's a new day, allow claiming
-    if (!isSameDay(completionDate, now)) return true;
-    
-    // Otherwise, task is already claimed today
-    return false;
-  };
+    const today = new Date();
+    isCompleted = (
+      completionDate.getDate() === today.getDate() &&
+      completionDate.getMonth() === today.getMonth() &&
+      completionDate.getFullYear() === today.getFullYear()
+    );
+  }
   
   const handleTaskClick = async () => {
     // If already completed and not a daily task, or if it's a daily task already claimed today
-    if ((isCompleted && !isDaily) || (isDaily && !canClaimDailyTask())) {
+    if (isCompleted) {
       if (isDaily) {
         toast.error("You've already completed this task today. Come back tomorrow!");
       } else {
@@ -61,8 +49,6 @@ const TaskCard = ({ task }: TaskCardProps) => {
       return;
     }
     
-    // For task validation, we should open in a new tab and require actual verification
-    // This is simplified for now
     setIsLoading(true);
     
     // Open the target URL in a new tab
@@ -118,7 +104,7 @@ const TaskCard = ({ task }: TaskCardProps) => {
               variant={isCompleted ? "outline" : "default"} 
               size="sm"
               onClick={handleTaskClick}
-              disabled={isLoading || (isCompleted && !isDaily) || (isDaily && isCompleted)}
+              disabled={isLoading || isCompleted}
             >
               {getButtonText()} {!isCompleted && <ExternalLink size={14} className="ml-1" />}
             </Button>

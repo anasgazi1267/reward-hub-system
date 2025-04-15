@@ -101,7 +101,7 @@ const InvitePage = () => {
               <Button 
                 onClick={shareInviteLink} 
                 size="lg" 
-                className="w-full md:w-auto px-8 mt-2"
+                className="w-full md:w-auto px-8 mt-2 bg-purple-500 hover:bg-purple-600"
               >
                 <Share2 className="mr-2" /> Share Invite Link
               </Button>

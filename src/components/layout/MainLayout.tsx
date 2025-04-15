@@ -40,7 +40,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     { name: 'Earn Coins', path: '/earn', icon: Award },
     { name: 'Rewards', path: '/rewards', icon: Gift },
     { name: 'Tasks', path: '/tasks', icon: FileCheck },
-    { name: 'Invite', path: '/invite', icon: UserPlus }, // Added invite menu item
+    { name: 'Invite', path: '/invite', icon: UserPlus },
     { name: 'Withdraw', path: '/withdraw', icon: DollarSign },
     { name: 'Profile', path: '/profile', icon: User },
   ];
