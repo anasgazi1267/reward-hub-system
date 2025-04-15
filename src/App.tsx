@@ -27,6 +27,7 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawalsPage";
 import AdminTasksPage from "./pages/admin/AdminTasksPage";
 import AdminAdsPage from "./pages/admin/AdminAdsPage";
+import AdminInviteRewardsPage from "./pages/admin/AdminInviteRewardsPage";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
               <Route path="/admin/tasks" element={<AdminTasksPage />} />
               <Route path="/admin/ads" element={<AdminAdsPage />} />
+              <Route path="/admin/invite-rewards" element={<AdminInviteRewardsPage />} />
               
               {/* Fallback routes */}
               <Route path="*" element={<NotFound />} />

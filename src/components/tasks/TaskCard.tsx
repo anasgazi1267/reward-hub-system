@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Task } from '@/lib/types';
-import { Coins, ExternalLink, CalendarClock } from 'lucide-react';
+import { Coins, ExternalLink, CalendarClock, Clock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
@@ -20,29 +20,44 @@ const TaskCard = ({ task }: TaskCardProps) => {
   const taskCompletionTime = user.taskCompletionTimes?.[task.id];
   const isDaily = frequency === 'daily' || type === 'Daily';
   
-  // Check if task is completed
+  // Check task completion status
   let isCompleted = false;
+  let timeRemaining = 0;
+  const now = new Date();
   
-  // For one-time tasks, check if it's in the completedTasks array
-  if (!isDaily) {
-    isCompleted = user.completedTasks.includes(task.id);
-  } 
-  // For daily tasks, check if it was completed today
-  else if (taskCompletionTime) {
+  if (taskCompletionTime) {
     const completionDate = new Date(taskCompletionTime);
-    const today = new Date();
-    isCompleted = (
-      completionDate.getDate() === today.getDate() &&
-      completionDate.getMonth() === today.getMonth() &&
-      completionDate.getFullYear() === today.getFullYear()
-    );
+    
+    // For daily tasks, check if completed today
+    if (isDaily) {
+      isCompleted = (
+        completionDate.getDate() === now.getDate() &&
+        completionDate.getMonth() === now.getMonth() &&
+        completionDate.getFullYear() === now.getFullYear()
+      );
+    } 
+    // For non-daily tasks, implement 72-hour cooldown
+    else {
+      const hoursSinceCompletion = Math.floor((now.getTime() - completionDate.getTime()) / (1000 * 60 * 60));
+      const cooldownHours = 72; // 72-hour cooldown
+      
+      if (hoursSinceCompletion < cooldownHours) {
+        isCompleted = true;
+        timeRemaining = cooldownHours - hoursSinceCompletion;
+      }
+    }
+  } else if (!isDaily) {
+    // For one-time tasks without completion time but in completedTasks array
+    isCompleted = user.completedTasks.includes(task.id);
   }
   
   const handleTaskClick = async () => {
-    // If already completed and not a daily task, or if it's a daily task already claimed today
+    // If task is on cooldown or completed
     if (isCompleted) {
       if (isDaily) {
         toast.error("You've already completed this task today. Come back tomorrow!");
+      } else if (timeRemaining > 0) {
+        toast.error(`You can complete this task again in ${timeRemaining} hours.`);
       } else {
         toast.error("You've already completed this task!");
       }
@@ -67,7 +82,9 @@ const TaskCard = ({ task }: TaskCardProps) => {
   const getButtonText = () => {
     if (isLoading) return 'Processing...';
     if (isCompleted) {
-      return isDaily ? 'Completed Today' : 'Completed';
+      if (isDaily) return 'Completed Today';
+      if (timeRemaining > 0) return `Available in ${timeRemaining}h`;
+      return 'Completed';
     }
     return 'Start Task';
   };
@@ -89,6 +106,11 @@ const TaskCard = ({ task }: TaskCardProps) => {
               {isDaily && (
                 <span className="bg-emerald-100 text-emerald-700 text-xs rounded-full px-2 py-0.5 flex items-center mr-2">
                   <CalendarClock size={12} className="mr-1" /> Daily
+                </span>
+              )}
+              {!isDaily && (
+                <span className="bg-blue-100 text-blue-700 text-xs rounded-full px-2 py-0.5 flex items-center mr-2">
+                  <Clock size={12} className="mr-1" /> 72h
                 </span>
               )}
               <span className="bg-primary/10 text-xs rounded-full px-2 py-0.5">{type}</span>

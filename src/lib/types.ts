@@ -79,6 +79,7 @@ export interface WithdrawalRequest {
 export interface SystemSettings {
   minWithdrawalCoins: number;
   referralReward: number;
+  inviterReward?: number; // Amount of coins given to the inviter
   minReferralsForWithdrawal: number;
 }
 

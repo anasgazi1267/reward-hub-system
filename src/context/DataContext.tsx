@@ -164,6 +164,7 @@ const initialWithdrawalRequests: WithdrawalRequest[] = [];
 const initialSettings: SystemSettings = {
   minWithdrawalCoins: 500,
   referralReward: 50,
+  inviterReward: 25,
   minReferralsForWithdrawal: 5
 };
 
