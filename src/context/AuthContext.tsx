@@ -11,9 +11,9 @@ interface AuthContextType {
   register: (username: string, email: string, password: string, referralCode?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
-  addCoins: (amount: number) => boolean;
-  deductCoins: (amount: number) => boolean;
-  completeTask: (taskId: string) => boolean;
+  addCoins: (amount: number) => Promise<boolean>;
+  deductCoins: (amount: number) => Promise<boolean>;
+  completeTask: (taskId: string) => Promise<boolean>;
   hasCompletedTask: (taskId: string) => boolean;
   canCompleteTask: (taskId: string, frequency?: string) => boolean;
   meetsWithdrawalRequirements: () => boolean;

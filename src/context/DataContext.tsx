@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Task, 
@@ -5,7 +6,10 @@ import {
   WithdrawalRequest,
   SystemSettings,
   PopupAd,
-  BannerAd
+  BannerAd,
+  RewardCategory,
+  TaskType,
+  TaskFrequency
 } from '@/lib/types';
 import { useAuth } from './AuthContext';
 import { toast } from '@/components/ui/sonner';
@@ -128,12 +132,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             id: task.id,
             title: task.title,
             description: task.description,
-            type: task.type as any,
+            type: task.type as TaskType,
             coinReward: task.coin_reward,
             targetUrl: task.target_url,
             imageUrl: task.image_url,
             requirements: task.requirements,
-            frequency: task.frequency as any
+            frequency: task.frequency as TaskFrequency
           }));
           setTasks(formattedTasks);
         }
@@ -149,7 +153,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             id: reward.id,
             name: reward.name,
             description: reward.description,
-            category: reward.category as any,
+            category: reward.category as RewardCategory,
             coinCost: reward.coin_cost,
             imageUrl: reward.image_url,
             available: reward.available
@@ -188,16 +192,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               userId: withdrawal.user_id,
               username: withdrawal.users?.username || 'Unknown',
               rewardId: withdrawal.reward_id,
-              rewardName: withdrawal.reward_name || 'Unknown Reward',
+              rewardName: withdrawal.reward_id, // We'll get the name below
               coinAmount: withdrawal.coin_amount,
-              status: withdrawal.status as any,
+              status: withdrawal.status as 'pending' | 'approved' | 'rejected',
               createdAt: withdrawal.created_at,
               playerUsername: withdrawal.player_username,
               playerID: withdrawal.player_id,
               email: withdrawal.email,
               phoneNumber: withdrawal.phone_number,
-              category: withdrawal.category as any
+              category: withdrawal.category as RewardCategory
             }));
+            
+            // Get reward names for each withdrawal
+            for (const withdrawal of formattedWithdrawals) {
+              const { data: rewardData } = await supabase
+                .from('rewards')
+                .select('name')
+                .eq('id', withdrawal.rewardId)
+                .single();
+              
+              if (rewardData) {
+                withdrawal.rewardName = rewardData.name;
+              }
+            }
+            
             setWithdrawalRequests(formattedWithdrawals);
           }
         }
@@ -285,7 +303,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         .insert({
           user_id: user.id,
           reward_id: request.rewardId,
-          reward_name: request.rewardName,
           coin_amount: request.coinAmount,
           player_username: request.playerUsername,
           player_id: request.playerID,
@@ -302,20 +319,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       
+      // Get the reward name
+      const { data: rewardData } = await supabase
+        .from('rewards')
+        .select('name')
+        .eq('id', request.rewardId)
+        .single();
+      
       const newRequest: WithdrawalRequest = {
         id: data.id,
         userId: data.user_id,
         username: user.username,
         rewardId: data.reward_id,
-        rewardName: request.rewardName,
+        rewardName: rewardData?.name || request.rewardName,
         coinAmount: data.coin_amount,
-        status: data.status,
+        status: data.status as 'pending' | 'approved' | 'rejected',
         createdAt: data.created_at,
         playerUsername: data.player_username,
         playerID: data.player_id,
         email: data.email,
         phoneNumber: data.phone_number,
-        category: data.category
+        category: data.category as RewardCategory
       };
       
       setWithdrawalRequests(prev => [newRequest, ...prev]);
@@ -387,12 +411,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         id: data.id,
         title: data.title,
         description: data.description,
-        type: data.type,
+        type: data.type as TaskType,
         coinReward: data.coin_reward,
         targetUrl: data.target_url,
         imageUrl: data.image_url,
         requirements: data.requirements,
-        frequency: data.frequency
+        frequency: data.frequency as TaskFrequency
       };
       
       setTasks(prev => [...prev, newTask]);
@@ -484,7 +508,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         id: data.id,
         name: data.name,
         description: data.description,
-        category: data.category,
+        category: data.category as RewardCategory,
         coinCost: data.coin_cost,
         imageUrl: data.image_url,
         available: data.available
