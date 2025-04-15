@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useData } from '@/context/DataProvider';
+import { useData } from '@/context/DataContext';
 import MainLayout from '@/components/layout/MainLayout';
 import PageTitle from '@/components/shared/PageTitle';
 import AdBanner from '@/components/ads/AdBanner';

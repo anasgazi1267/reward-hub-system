@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Users, Copy, Share2 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import { useData } from '@/context/DataProvider';
+import { useData } from '@/context/DataContext';
 import { useNavigate } from 'react-router-dom';
 
 const InvitePage = () => {

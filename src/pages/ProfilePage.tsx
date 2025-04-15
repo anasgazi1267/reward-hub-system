@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
@@ -17,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
-import { useData } from '@/context/DataProvider';
+import { useData } from '@/context/DataContext';
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
