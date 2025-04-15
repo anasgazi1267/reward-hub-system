@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
@@ -42,14 +41,12 @@ const AdminUsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Redirect if not admin
   useEffect(() => {
     if (!user?.isAdmin) {
       navigate('/login');
     }
   }, [user, navigate]);
   
-  // Load users from localStorage
   useEffect(() => {
     const storedUsers = localStorage.getItem('rewardHubUsers');
     if (storedUsers) {
@@ -59,13 +56,11 @@ const AdminUsersPage = () => {
   
   if (!user?.isAdmin) return null;
   
-  // Filter users by search term
   const filteredUsers = users.filter(u => 
     u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  // Add or remove coins
   const updateUserCoins = (userId: string, amount: number) => {
     const updatedUsers = users.map(u => {
       if (u.id === userId) {

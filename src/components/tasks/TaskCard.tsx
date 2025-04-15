@@ -20,7 +20,6 @@ const TaskCard = ({ task }: TaskCardProps) => {
   const taskCompletionTime = user.taskCompletionTimes?.[task.id];
   const isDaily = frequency === 'daily' || type === 'Daily';
   
-  // Check task completion status
   let isCompleted = false;
   let timeRemaining = 0;
   const now = new Date();
@@ -28,7 +27,6 @@ const TaskCard = ({ task }: TaskCardProps) => {
   if (taskCompletionTime) {
     const completionDate = new Date(taskCompletionTime);
     
-    // For daily tasks, check if completed today
     if (isDaily) {
       isCompleted = (
         completionDate.getDate() === now.getDate() &&
@@ -36,10 +34,9 @@ const TaskCard = ({ task }: TaskCardProps) => {
         completionDate.getFullYear() === now.getFullYear()
       );
     } 
-    // For non-daily tasks, implement 72-hour cooldown
     else {
       const hoursSinceCompletion = Math.floor((now.getTime() - completionDate.getTime()) / (1000 * 60 * 60));
-      const cooldownHours = 72; // 72-hour cooldown
+      const cooldownHours = 72;
       
       if (hoursSinceCompletion < cooldownHours) {
         isCompleted = true;
@@ -47,21 +44,17 @@ const TaskCard = ({ task }: TaskCardProps) => {
       }
     }
   } else if (!isDaily) {
-    // For one-time tasks without completion time but in completedTasks array
     isCompleted = user.completedTasks.includes(task.id);
   }
   
-  // Use useEffect to prevent the task from being processed multiple times
   useEffect(() => {
     return () => {
-      // Clean up any pending state changes when component unmounts
       setIsLoading(false);
       setIsProcessing(false);
     };
   }, []);
   
   const handleTaskClick = async () => {
-    // Prevent multiple clicks or if task is on cooldown or completed
     if (isLoading || isProcessing || isCompleted) {
       if (isDaily) {
         toast.error("You've already completed this task today. Come back tomorrow!");
@@ -73,19 +66,14 @@ const TaskCard = ({ task }: TaskCardProps) => {
       return;
     }
     
-    // Set both loading and processing states to prevent multiple rewards
     setIsLoading(true);
     setIsProcessing(true);
     
-    // Store a flag in session storage to prevent back-navigation exploit
     sessionStorage.setItem(`task_${task.id}_processing`, 'true');
     
-    // Open the target URL in a new tab
     window.open(targetUrl, '_blank');
     
-    // Simulate task verification
     setTimeout(() => {
-      // Check if this task was already processed in this session
       if (sessionStorage.getItem(`task_${task.id}_completed`) === 'true') {
         toast.error("This task has already been completed.");
         setIsLoading(false);
@@ -96,17 +84,14 @@ const TaskCard = ({ task }: TaskCardProps) => {
       completeTask(task.id);
       addCoins(coinReward);
       
-      // Mark this task as completed in session storage
       sessionStorage.setItem(`task_${task.id}_completed`, 'true');
       sessionStorage.removeItem(`task_${task.id}_processing`);
       
       setIsLoading(false);
-      // Keep processing state true to prevent multiple rewards
       toast.success(`Task completed! You earned ${coinReward} coins!`);
     }, 1500);
   };
   
-  // Determine button text based on task status
   const getButtonText = () => {
     if (isLoading) return 'Processing...';
     if (isCompleted) {

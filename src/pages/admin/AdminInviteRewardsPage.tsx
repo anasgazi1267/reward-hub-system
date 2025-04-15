@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import MainLayout from '@/components/layout/MainLayout';
@@ -53,11 +52,13 @@ const AdminInviteRewardsPage = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if not admin
-  if (!user?.isAdmin) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user?.isAdmin) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  if (!user?.isAdmin) return null;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
