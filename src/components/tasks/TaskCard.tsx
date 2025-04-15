@@ -1,9 +1,8 @@
-
 import { Button } from '@/components/ui/button';
 import { Task } from '@/lib/types';
 import { Coins, ExternalLink, CalendarClock, Clock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/sonner';
 
 interface TaskCardProps {
@@ -14,6 +13,7 @@ const TaskCard = ({ task }: TaskCardProps) => {
   const { title, description, coinReward, type, targetUrl, imageUrl, frequency } = task;
   const { user, addCoins, completeTask } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   if (!user) return null;
   
@@ -51,9 +51,18 @@ const TaskCard = ({ task }: TaskCardProps) => {
     isCompleted = user.completedTasks.includes(task.id);
   }
   
+  // Use useEffect to prevent the task from being processed multiple times
+  useEffect(() => {
+    return () => {
+      // Clean up any pending state changes when component unmounts
+      setIsLoading(false);
+      setIsProcessing(false);
+    };
+  }, []);
+  
   const handleTaskClick = async () => {
-    // If task is on cooldown or completed
-    if (isCompleted) {
+    // Prevent multiple clicks or if task is on cooldown or completed
+    if (isLoading || isProcessing || isCompleted) {
       if (isDaily) {
         toast.error("You've already completed this task today. Come back tomorrow!");
       } else if (timeRemaining > 0) {
@@ -64,16 +73,35 @@ const TaskCard = ({ task }: TaskCardProps) => {
       return;
     }
     
+    // Set both loading and processing states to prevent multiple rewards
     setIsLoading(true);
+    setIsProcessing(true);
+    
+    // Store a flag in session storage to prevent back-navigation exploit
+    sessionStorage.setItem(`task_${task.id}_processing`, 'true');
     
     // Open the target URL in a new tab
     window.open(targetUrl, '_blank');
     
     // Simulate task verification
     setTimeout(() => {
+      // Check if this task was already processed in this session
+      if (sessionStorage.getItem(`task_${task.id}_completed`) === 'true') {
+        toast.error("This task has already been completed.");
+        setIsLoading(false);
+        setIsProcessing(false);
+        return;
+      }
+      
       completeTask(task.id);
       addCoins(coinReward);
+      
+      // Mark this task as completed in session storage
+      sessionStorage.setItem(`task_${task.id}_completed`, 'true');
+      sessionStorage.removeItem(`task_${task.id}_processing`);
+      
       setIsLoading(false);
+      // Keep processing state true to prevent multiple rewards
       toast.success(`Task completed! You earned ${coinReward} coins!`);
     }, 1500);
   };
