@@ -55,7 +55,7 @@ export const fetchUserData = async (userId: string): Promise<User | null> => {
   }
 };
 
-export const handleReferralCode = (location: Location): string | null => {
+export const handleReferralCode = (location: { search: string }): string | null => {
   const params = new URLSearchParams(location.search);
   const referralCode = params.get('ref');
   

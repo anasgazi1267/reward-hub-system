@@ -98,7 +98,7 @@ export const useAuthOperations = (user: User | null, setUser: (user: User | null
         
       if (profileError) {
         console.error('Profile creation error:', profileError);
-        await supabase.auth.admin.deleteUser(authData.user.id);
+        // No need to attempt to delete the user - this isn't a valid operation with the admin API in client code
         toast.error('Failed to create user profile');
         return false;
       }

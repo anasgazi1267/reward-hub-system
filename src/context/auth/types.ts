@@ -1,5 +1,6 @@
 
-import { User as SupabaseUser } from '@/integrations/supabase/types';
+// Removing the incorrect import from supabase types
+// and defining our own User interface
 
 export interface User {
   id: string;
