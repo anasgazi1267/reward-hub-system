@@ -81,7 +81,6 @@ const InvitePage = () => {
         <PageTitle
           title="Invite Friends"
           description="Invite friends and earn rewards"
-          icon={<Share2 className="h-6 w-6" />}
         />
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
