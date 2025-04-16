@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
@@ -27,23 +26,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check for referral code in URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const referralCode = params.get('ref');
     
     if (referralCode) {
-      // Store referral code in session storage
       sessionStorage.setItem('referralCode', referralCode);
     }
   }, [location]);
 
-  // Session handling
   useEffect(() => {
     const checkSession = async () => {
       setIsLoading(true);
       try {
-        // Check current session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
@@ -56,7 +51,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (userError) {
             console.error('Error fetching user data:', userError);
           } else if (userData) {
-            // Convert database user to app user format
             const appUser: User = {
               id: userData.id,
               username: userData.username,
@@ -65,13 +59,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               referralCode: userData.referral_code,
               referredBy: userData.referred_by || undefined,
               referralCount: userData.referral_count,
-              completedTasks: [], // Load from completed_tasks table as needed
-              taskCompletionTimes: {}, // Load from completed_tasks table as needed
+              completedTasks: [],
+              taskCompletionTimes: {},
               isAdmin: userData.is_admin
             };
+            
             setUser(appUser);
             
-            // Load completed tasks
             const { data: completedTasksData, error: completedTasksError } = await supabase
               .from('completed_tasks')
               .select('task_id, completed_at')
@@ -99,11 +93,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     checkSession();
     
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          // User just signed in, fetch their data
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('*')
@@ -125,23 +117,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               taskCompletionTimes: {},
               isAdmin: userData.is_admin
             };
-            
-            // Load completed tasks
-            const { data: completedTasksData, error: completedTasksError } = await supabase
-              .from('completed_tasks')
-              .select('task_id, completed_at')
-              .eq('user_id', userData.id);
-              
-            if (!completedTasksError && completedTasksData) {
-              appUser.completedTasks = completedTasksData.map(task => task.task_id);
-              
-              const taskCompletionTimes: Record<string, string> = {};
-              completedTasksData.forEach(task => {
-                taskCompletionTimes[task.task_id] = task.completed_at;
-              });
-              
-              appUser.taskCompletionTimes = taskCompletionTimes;
-            }
             
             setUser(appUser);
           }
@@ -181,7 +156,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const register = async (username: string, email: string, password: string, referralCode?: string): Promise<boolean> => {
     try {
-      // Check if a valid referral code was provided
       let referredByUserId: string | null = null;
       
       if (referralCode) {
@@ -192,7 +166,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .single();
           
         if (referrerError) {
-          if (referrerError.code !== 'PGRST116') { // PGRST116 is the error code for "no rows found"
+          if (referrerError.code !== 'PGRST116') {
             console.error('Error checking referral code:', referrerError);
           }
         } else if (referrerData) {
@@ -200,7 +174,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
       
-      // Try to use referral code from URL if not provided directly
       if (!referredByUserId) {
         const storedReferralCode = sessionStorage.getItem('referralCode');
         if (storedReferralCode) {
@@ -216,7 +189,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
       
-      // Register the user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -233,18 +205,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
       
-      // Generate a unique referral code
       const referralCodeBase = username.toLowerCase().replace(/[^a-z0-9]/g, '');
       const uniqueReferralCode = `${referralCodeBase}${Math.floor(Math.random() * 10000)}`;
       
-      // Create user profile in our users table
       const { error: profileError } = await supabase
         .from('users')
         .insert({
           id: authData.user.id,
           username,
           email,
-          coins: 100, // Starting coins
+          coins: 100,
           referral_code: uniqueReferralCode,
           referred_by: referredByUserId,
           referral_count: 0
@@ -252,15 +222,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
       if (profileError) {
         console.error('Profile creation error:', profileError);
-        // Try to delete the auth user if profile creation fails
         await supabase.auth.admin.deleteUser(authData.user.id);
         toast.error('Failed to create user profile');
         return false;
       }
       
-      // If user was referred, update referrer's referral count and add coins
       if (referredByUserId) {
-        // Get settings
         const { data: settingsData } = await supabase
           .from('settings')
           .select('referral_reward, inviter_reward')
@@ -270,19 +237,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const referralReward = settingsData?.referral_reward || 50;
         const inviterReward = settingsData?.inviter_reward || 25;
         
-        // Add coins to new user
         await supabase
           .from('users')
           .update({ coins: 100 + referralReward })
           .eq('id', authData.user.id);
           
-        // Add coins and increment referral count for referrer
         await supabase.rpc('increment_referral_count', {
           user_id: referredByUserId,
           coin_reward: inviterReward
         });
         
-        // Clear stored referral code
         sessionStorage.removeItem('referralCode');
       }
       
@@ -374,7 +338,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     if (user.completedTasks.includes(taskId)) {
-      // Check if it's a daily task that can be completed again
       const { data: taskData } = await supabase
         .from('tasks')
         .select('frequency')
@@ -386,7 +349,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
       
-      // Check if the task was completed today
       const lastCompletionTime = user.taskCompletionTimes[taskId];
       if (lastCompletionTime) {
         const lastCompletion = new Date(lastCompletionTime);
@@ -400,22 +362,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     try {
-      // Get task reward amount
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .select('coin_reward')
         .eq('id', taskId)
         .single();
         
-      if (taskError) {
-        console.error('Error fetching task:', taskError);
-        toast.error('Failed to complete task');
-        return false;
-      }
-      
       const coinReward = taskData.coin_reward;
       
-      // Add completed task record
       const now = new Date().toISOString();
       const { error: completionError } = await supabase
         .from('completed_tasks')
@@ -431,7 +385,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
       
-      // Add coins to user
       const { error: coinError } = await supabase
         .from('users')
         .update({ coins: user.coins + coinReward })
@@ -443,7 +396,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
       
-      // Update local user state
       const updatedCompletedTasks = [...user.completedTasks];
       if (!updatedCompletedTasks.includes(taskId)) {
         updatedCompletedTasks.push(taskId);
@@ -470,7 +422,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const hasCompletedTask = (taskId: string): boolean => {
     if (!user) return false;
     
-    // If it's a one-time task, simply check if it's in the completed tasks array
     if (user.completedTasks.includes(taskId)) {
       return true;
     }
@@ -481,12 +432,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const canCompleteTask = (taskId: string, frequency?: string): boolean => {
     if (!user) return false;
     
-    // If it's a one-time task and already completed, can't complete again
     if (frequency !== 'daily' && user.completedTasks.includes(taskId)) {
       return false;
     }
     
-    // If it's a daily task and already completed today, can't complete again
     if (frequency === 'daily' && user.completedTasks.includes(taskId)) {
       const lastCompletionTime = user.taskCompletionTimes[taskId];
       if (lastCompletionTime) {
@@ -505,7 +454,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const meetsWithdrawalRequirements = (): boolean => {
     if (!user) return false;
     
-    // Check if user has enough referrals
     return user.referralCount >= 5;
   };
 
